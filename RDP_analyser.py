@@ -5,14 +5,14 @@ import csv
 import pandas as pd
 
 # Function to run rdp-sec-check.pl for a given IP
-def run_rdp_sec_check(ip, rdp_sec_check_dir):
+def run_rdp_sec_check(ip_with_port, rdp_sec_check_dir):
     rdp_sec_check_path = os.path.join(rdp_sec_check_dir, "rdp-sec-check.pl")
     found_issues = []
 
     try:
         # Run the Perl script using subprocess and capture the output
         result = subprocess.run(
-            ["perl", rdp_sec_check_path, f"{ip}:3389"],
+            ["perl", rdp_sec_check_path, ip_with_port],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -25,18 +25,27 @@ def run_rdp_sec_check(ip, rdp_sec_check_dir):
                 found_issues.append(issue)
     
     except Exception as e:
-        print(f"An error occurred while checking {ip}: {e}")
+        print(f"An error occurred while checking {ip_with_port}: {e}")
     
     return found_issues
 
-# Function to read IPs from a file
+# Function to read IPs from a file and handle default ports
 def read_ips_from_file(file_path):
+    ip_list = []
     try:
         with open(file_path, 'r') as file:
-            return [line.strip() for line in file if line.strip()]
+            for line in file:
+                line = line.strip()
+                if line:
+                    if ':' in line:  # IP already includes a port
+                        ip, port = line.split(':')
+                        ip_with_port = f"{ip}:{port}"
+                    else:  # No port included, default to 3389
+                        ip_with_port = f"{line}:3389"
+                    ip_list.append(ip_with_port)
     except Exception as e:
         print(f"Error reading IP file: {e}")
-        return []
+    return ip_list
 
 # Function to save results in vertical format
 def save_results_vertical(results):
@@ -48,7 +57,7 @@ def save_results_vertical(results):
         writer = csv.writer(file)
         writer.writerow(["IP Address", "Issues"])
         for ip, issues in results.items():
-            writer.writerow([ip, ", ".join(issues)])
+            writer.writerow([ip, "; ".join(issues)])
 
     # Save to XLSX
     df = pd.DataFrame([(ip, "; ".join(issues)) for ip, issues in results.items()],
@@ -96,10 +105,10 @@ def main():
     results = {}
 
     # Run the check for each IP
-    for ip in ip_list:
-        issues = run_rdp_sec_check(ip, args.dir)
+    for ip_with_port in ip_list:
+        issues = run_rdp_sec_check(ip_with_port, args.dir)
         if issues:
-            results[ip] = issues
+            results[ip_with_port] = issues
 
     # Save results based on orientation
     if args.orientation == 'horizontal':
