@@ -29,6 +29,7 @@ def run_rdp_sec_check(ip_with_port, rdp_sec_check_dir):
     
     return found_issues
 
+
 # Function to read IPs from a file and handle default ports
 def read_ips_from_file(file_path):
     ip_list = []
@@ -47,6 +48,7 @@ def read_ips_from_file(file_path):
         print(f"Error reading IP file: {e}")
     return ip_list
 
+
 # Function to save results in vertical format
 def save_results_vertical(results):
     csv_file = "RDP_analyser_results.csv"
@@ -60,9 +62,12 @@ def save_results_vertical(results):
             writer.writerow([ip, "; ".join(issues)])
 
     # Save to XLSX
-    df = pd.DataFrame([(ip, "; ".join(issues)) for ip, issues in results.items()],
-                      columns=["IP Address", "Issues"])
+    df = pd.DataFrame(
+        [(ip, "; ".join(issues)) for ip, issues in results.items()],
+        columns=["IP Address", "Issues"]
+    )
     df.to_excel(xlsx_file, index=False)
+
 
 # Function to save results in horizontal format
 def save_results_horizontal(results):
@@ -81,20 +86,39 @@ def save_results_horizontal(results):
     max_ips = max(len(ips) for ips in issues_to_ips.values())
 
     # Create a DataFrame with issues as columns and IPs as rows
-    data = {issue: ips + [''] * (max_ips - len(ips)) for issue, ips in issues_to_ips.items()}
+    data = {
+        issue: ips + [''] * (max_ips - len(ips))
+        for issue, ips in issues_to_ips.items()
+    }
+
     df = pd.DataFrame(data)
 
     # Save to CSV and XLSX
     df.to_csv(csv_file, index=False)
     df.to_excel(xlsx_file, index=False)
 
+
 # Main function to handle arguments and run the checks
 def main():
-    parser = argparse.ArgumentParser(description="Run rdp-sec-check.pl on a list of IPs.")
-    parser.add_argument("-f", "--file", required=True, help="Path to the file containing IPs")
-    parser.add_argument("-d", "--dir", required=True, help="Directory where rdp-sec-check.pl is located")
-    parser.add_argument("-o", "--orientation", choices=['horizontal', 'vertical'], default='vertical', 
-                        help="Output format: 'horizontal' or 'vertical' (default: vertical)")
+    parser = argparse.ArgumentParser(
+        description="Run rdp-sec-check.pl on a list of IPs."
+    )
+    parser.add_argument(
+        "-f", "--file",
+        required=True,
+        help="Path to the file containing IPs"
+    )
+    parser.add_argument(
+        "-d", "--dir",
+        required=True,
+        help="Directory where rdp-sec-check.pl is located"
+    )
+    parser.add_argument(
+        "-o", "--orientation",
+        choices=['horizontal', 'vertical'],
+        default='vertical',
+        help="Output format: 'horizontal' or 'vertical' (default: vertical)"
+    )
 
     args = parser.parse_args()
 
@@ -110,11 +134,17 @@ def main():
         if issues:
             results[ip_with_port] = issues
 
+    # NEW FIX: handle empty results
+    if not results:
+        print("No issues were found on any scanned IPs.")
+        return
+
     # Save results based on orientation
     if args.orientation == 'horizontal':
         save_results_horizontal(results)
     else:
         save_results_vertical(results)
+
 
 if __name__ == "__main__":
     main()
